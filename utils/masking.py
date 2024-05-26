@@ -1,4 +1,6 @@
-import torch
+
+import mindtorch.torch as torch
+import mindspore as ms
 
 
 class TriangularCausalMask():

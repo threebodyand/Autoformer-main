@@ -8,7 +8,7 @@ python -u run.py \
   --model Autoformer \
   --data ETTh1 \
   --features M \
-  --seq_len 96 \
+  --seq_len 96 \export NUMEXPR_MAX_THREADS=16
   --label_len 48 \
   --pred_len 24 \
   --e_layers 2 \

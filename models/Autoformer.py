@@ -1,11 +1,9 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from layers.Embed import DataEmbedding, DataEmbedding_wo_pos
+
+import mindtorch.torch as torch
+import mindtorch.torch.nn as nn
+from layers.Embed import DataEmbedding_wo_pos
 from layers.AutoCorrelation import AutoCorrelation, AutoCorrelationLayer
 from layers.Autoformer_EncDec import Encoder, Decoder, EncoderLayer, DecoderLayer, my_Layernorm, series_decomp
-import math
-import numpy as np
 
 
 class Model(nn.Module):
@@ -15,16 +13,16 @@ class Model(nn.Module):
     """
     def __init__(self, configs):
         super(Model, self).__init__()
-        self.seq_len = configs.seq_len        # 96
-        self.label_len = configs.label_len    # 48（解码器的开头输入部分，其余输入应该是掩码）
-        self.pred_len = configs.pred_len      # 96
-        self.output_attention = configs.output_attention  # false
+        self.seq_len = configs.seq_len
+        self.label_len = configs.label_len
+        self.pred_len = configs.pred_len
+        self.output_attention = configs.output_attention
 
-        # Decomp  对分解模块进行初始化
-        kernel_size = configs.moving_avg  # 25
+        # Decomp
+        kernel_size = configs.moving_avg
         self.decomp = series_decomp(kernel_size)
 
-        # Embedding  词嵌入：给编码器和解码器的输入作词嵌入（包含一维卷积和线性层）
+        # Embedding
         # The series-wise connection inherently contains the sequential information.
         # Thus, we can discard the position embedding of transformers.
         self.enc_embedding = DataEmbedding_wo_pos(configs.enc_in, configs.d_model, configs.embed, configs.freq,
@@ -33,18 +31,10 @@ class Model(nn.Module):
                                                   configs.dropout)
 
         # Encoder
-        '''
-        编码器的参数：
-            一个数组：里面包含 configs.e_layers 个编码器层EncoderLayer
-                    每个EncoderLayer里面有两个一维卷积，两个序列分解模块以及一个dropout和一个relu激活函数
-            一个正则化的层：用于正则化
-        执行顺序:AutoCorrelation(__init__) ==>AutoCorrelationLayer(__init__) ==>EncoderLayer(__init__) ==>Encoder(__init__)
-        '''
-        self.encoder = Encoder(  # 给编码器配置两个EncoderLayer和一个正则化层
+        self.encoder = Encoder(
             [
-                EncoderLayer(  # Autoformer_EncDec.py里面的一个类，EncoderLayer由一个自相关模块、两个序列分解模块和一个线性层组成
-                    AutoCorrelationLayer(  # AutoCorrelationLayer是一个类，定义了一个AutoCorrelation,四个线性层,以及一些参数
-                        # AutoCorrelation是一个类，其init主要是初始化一些参数
+                EncoderLayer(
+                    AutoCorrelationLayer(
                         AutoCorrelation(False, configs.factor, attention_dropout=configs.dropout,
                                         output_attention=configs.output_attention),
                         configs.d_model, configs.n_heads),
@@ -53,19 +43,19 @@ class Model(nn.Module):
                     moving_avg=configs.moving_avg,
                     dropout=configs.dropout,
                     activation=configs.activation
-                ) for l in range(configs.e_layers)  # e_layers=2
+                ) for l in range(configs.e_layers)
             ],
-            norm_layer=my_Layernorm(configs.d_model)  # 正则化,512
+            norm_layer=my_Layernorm(configs.d_model)
         )
         # Decoder
         self.decoder = Decoder(
             [
-                DecoderLayer(  # Autoformer_EncDec.py里面的一个类，EncoderLayer由两个自相关模块、三个序列分解模块和一个线性层组成
-                    AutoCorrelationLayer(  # 第一个自相关模块，带掩码
+                DecoderLayer(
+                    AutoCorrelationLayer(
                         AutoCorrelation(True, configs.factor, attention_dropout=configs.dropout,
                                         output_attention=False),
                         configs.d_model, configs.n_heads),
-                    AutoCorrelationLayer(  # 第二个自相关模块，不带掩码
+                    AutoCorrelationLayer(
                         AutoCorrelation(False, configs.factor, attention_dropout=configs.dropout,
                                         output_attention=False),
                         configs.d_model, configs.n_heads),
@@ -84,14 +74,7 @@ class Model(nn.Module):
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
-        """
-        x_enc:[32,96,321]   x_mark_enc:[32,96,4]
-        x_dec:[32,144,321]  x_mark_dec:[32,144,4]
-        enc_self_mask: [32,144,321]
-        dec_self_mask: None
-        dec_enc_mask: None
-         """
-        # decomp init 分解模块初始化
+        # decomp init
         mean = torch.mean(x_enc, dim=1).unsqueeze(1).repeat(1, self.pred_len, 1)
         zeros = torch.zeros([x_dec.shape[0], self.pred_len, x_dec.shape[2]], device=x_enc.device)
         seasonal_init, trend_init = self.decomp(x_enc)
