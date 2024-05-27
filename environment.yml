@@ -12,5 +12,3 @@ dependencies:
   - scikit-learn
   - pip:
     - torch==1.9.0
-
-

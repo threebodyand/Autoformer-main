@@ -1,8 +1,6 @@
-
 import numpy as np
-import mindtorch.torch as torch
+import torch
 import matplotlib.pyplot as plt
-
 
 plt.switch_backend('agg')
 

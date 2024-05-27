@@ -1,7 +1,7 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-import mindtorch.torch.nn as nn
-import mindtorch.torch.nn.functional as F
-import mindspore as ms
 
 class ConvLayer(nn.Module):
     def __init__(self, c_in):

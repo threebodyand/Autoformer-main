@@ -1,46 +1,26 @@
-import mindtorch.torch as torch
-import mindtorch.torch.nn as nn
-import math
-import mindspore as ms
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
-def compared_version(ver1, ver2):
-    """
-    :param ver1
-    :param ver2
-    :return: ver1< = >ver2 False/True
-    """
-    list1 = str(ver1).split(".")
-    list2 = str(ver2).split(".")
-    
-    for i in range(len(list1)) if len(list1) < len(list2) else range(len(list2)):
-        if int(list1[i]) == int(list2[i]):
-            pass
-        elif int(list1[i]) < int(list2[i]):
-            return -1
-        else:
-            return 1
-    
-    if len(list1) == len(list2):
-        return True
-    elif len(list1) < len(list2):
-        return False
-    else:
-        return True
+from torch.nn.utils import weight_norm
+import math
+
 
 class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
         # Compute the positional encodings once in log space.
-        pe = torch.zeros(max_len, d_model).float()
+        pe = torch.zeros(max_len, d_model).float()  # 维度为[5000,512]的全0数组
         pe.require_grad = False
 
+        # 把position从一维变为二维tensor(浮点数):[0,1,...,4999]，此时维度：[5000,1]
         position = torch.arange(0, max_len).float().unsqueeze(1)
+        # 原始的位置编码？  torch.arange(0, d_model, 2)：[0,2,4,...,510]
         div_term = (torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model)).exp()
 
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
 
-        pe = pe.unsqueeze(0)
+        pe = pe.unsqueeze(0)  # 再次扩充维度到三维tensor：torch.Size([1, 5000, 512])
         self.register_buffer('pe', pe)
 
     def forward(self, x):
@@ -50,29 +30,21 @@ class PositionalEmbedding(nn.Module):
 class TokenEmbedding(nn.Module):
     def __init__(self, c_in, d_model):
         super(TokenEmbedding, self).__init__()
-        padding = 1 if self.compared_version(torch.__version__, '1.5.0') else 2
-        self.padding = padding
+        padding = 1 if torch.__version__ >= '1.5.0' else 2  # padding = 1
+        # 对于electricity数据集（26305*321），321个特征（用户）：
+        # Conv1d(321, 512, kernel_size=(3,), stride=(1,), padding=(1,), bias=False, padding_mode=circular)
         self.tokenConv = nn.Conv1d(in_channels=c_in, out_channels=d_model,
-                                   kernel_size=3, padding=0, bias=False)  # 设置 padding 为 0，因为我们会手动处理填充
+                                   kernel_size=3, padding=padding, padding_mode='circular', bias=False)
+        # 使用he初始化（使用正态分布对输入张量进行赋值）
         for m in self.modules():
             if isinstance(m, nn.Conv1d):
+                # Kaiming 初始化，如果权重是通过线性层（卷积或全连接）隐性确定的，则需设置mode=fan_in
                 nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='leaky_relu')
 
     def forward(self, x):
-        # 手动实现 circular padding
-        x = F.pad(x.permute(0, 2, 1), (self.padding, self.padding), mode='circular')
-        x = self.tokenConv(x).transpose(1, 2)
+        x = self.tokenConv(x.permute(0, 2, 1)).transpose(1, 2)
         return x
 
-    def compared_version(self, v1, v2):
-        """
-        比较两个版本号的工具函数，如果 v1 >= v2 返回 True，否则返回 False。
-        """
-
-        def version_tuple(v):
-            return tuple(map(int, (v.split("."))))
-
-        return version_tuple(v1) >= version_tuple(v2)
 
 class FixedEmbedding(nn.Module):
     def __init__(self, c_in, d_model):
@@ -129,7 +101,8 @@ class TimeFeatureEmbedding(nn.Module):
         super(TimeFeatureEmbedding, self).__init__()
 
         freq_map = {'h': 4, 't': 5, 's': 6, 'm': 1, 'a': 1, 'w': 2, 'd': 3, 'b': 3}
-        d_inp = freq_map[freq]
+        d_inp = freq_map[freq]  # 确定采样频率，一般为小时h，这里小时对应的输入维度为4（把时间戳拆成：小时，天，月，年）
+        # 一个线性层 (4,512)
         self.embed = nn.Linear(d_inp, d_model, bias=False)
 
     def forward(self, x):
@@ -153,14 +126,19 @@ class DataEmbedding(nn.Module):
 
 
 class DataEmbedding_wo_pos(nn.Module):
+    """ 整体流程为：Conv1d -> activation -> position_embedding -> Linear  -> dropout """
     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1):
         super(DataEmbedding_wo_pos, self).__init__()
 
+        # TokenEmbedding是一个类（在上面定义），里面主要是一个一维卷积，并使用正态分布初始化
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
+        # 位置编码层 (1,5000,512)
         self.position_embedding = PositionalEmbedding(d_model=d_model)
+        # 判断是否为'timeF'，这里调用TimeFeatureEmbedding，线性层 (4,512) 用来处理传来的时间戳的分解后的四个维度
         self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type,
                                                     freq=freq) if embed_type != 'timeF' else TimeFeatureEmbedding(
             d_model=d_model, embed_type=embed_type, freq=freq)
+        # dropout = 0.05
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark):

@@ -1,12 +1,16 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 
-import mindtorch.torch as torch
-import mindtorch.torch.nn as nn
+import matplotlib.pyplot as plt
 
 import numpy as np
+import math
 from math import sqrt
 from utils.masking import TriangularCausalMask, ProbMask
 from reformer_pytorch import LSHSelfAttention
-import mindspore as ms
+import os
+
 
 class FullAttention(nn.Module):
     def __init__(self, mask_flag=True, factor=5, scale=None, attention_dropout=0.1, output_attention=False):

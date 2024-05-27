@@ -18,7 +18,6 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --freq 't' \
   --itr 1
 
 python -u run.py \
@@ -38,7 +37,6 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --freq 't' \
   --itr 1
 
 python -u run.py \
@@ -58,7 +56,6 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --freq 't' \
   --itr 1
 
 python -u run.py \
@@ -78,5 +75,4 @@ python -u run.py \
   --dec_in 7 \
   --c_out 7 \
   --des 'Exp' \
-  --freq 't' \
   --itr 1

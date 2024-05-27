@@ -138,7 +138,8 @@ class DecoderLayer(nn.Module):
         self.decomp2 = series_decomp(moving_avg)
         self.decomp3 = series_decomp(moving_avg)
         self.dropout = nn.Dropout(dropout)
-        self.projection = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=3, stride=1, padding=0, bias=False)
+        self.projection = nn.Conv1d(in_channels=d_model, out_channels=c_out, kernel_size=3, stride=1, padding=1,
+                                    padding_mode='circular', bias=False)
         self.activation = F.relu if activation == "relu" else F.gelu
 
     def forward(self, x, cross, x_mask=None, cross_mask=None):
@@ -158,24 +159,8 @@ class DecoderLayer(nn.Module):
         x, trend3 = self.decomp3(x + y)
 
         residual_trend = trend1 + trend2 + trend3
-        # 手动实现 circular padding
-        residual_trend = F.pad(residual_trend.permute(0, 2, 1), (1, 1), mode='circular')
-        residual_trend = self.projection(residual_trend).transpose(1, 2)
+        residual_trend = self.projection(residual_trend.permute(0, 2, 1)).transpose(1, 2)
         return x, residual_trend
-
-# 示例的 series_decomp 函数（请根据实际情况定义）
-def series_decomp(moving_avg):
-    # 示例实现，实际需要根据具体需求进行定义
-    class Decomposition(nn.Module):
-        def __init__(self, moving_avg):
-            super(Decomposition, self).__init__()
-            self.moving_avg = moving_avg
-
-        def forward(self, x):
-            trend = x.mean(dim=-1, keepdim=True)  # 示例趋势分解
-            return x - trend, trend
-
-    return Decomposition(moving_avg)
 
 
 class Decoder(nn.Module):

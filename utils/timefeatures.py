@@ -75,6 +75,7 @@ class WeekOfYear(TimeFeature):
 
 def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
     """
+    返回适用于给定频率（这里为小时h）字符串的时间特征列表。
     Returns a list of time features that will be appropriate for the given frequency string.
     Parameters
     ----------
@@ -82,22 +83,22 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
         Frequency string of the form [multiple][granularity] such as "12H", "5min", "1D" etc.
     """
 
-    features_by_offsets = {
+    features_by_offsets = {  # 定义一个字典
         offsets.YearEnd: [],
-        offsets.QuarterEnd: [MonthOfYear],
-        offsets.MonthEnd: [MonthOfYear],
-        offsets.Week: [DayOfMonth, WeekOfYear],
-        offsets.Day: [DayOfWeek, DayOfMonth, DayOfYear],
-        offsets.BusinessDay: [DayOfWeek, DayOfMonth, DayOfYear],
-        offsets.Hour: [HourOfDay, DayOfWeek, DayOfMonth, DayOfYear],
-        offsets.Minute: [
-            MinuteOfHour,
-            HourOfDay,
-            DayOfWeek,
-            DayOfMonth,
-            DayOfYear,
+        offsets.QuarterEnd: [MonthOfYear],  # 一个类，表示编码为介于[-0.5，0.5]之间的值的月份
+        offsets.MonthEnd: [MonthOfYear],  # 一个类，表示编码为介于[-0.5，0.5]之间的值的月份
+        offsets.Week: [DayOfMonth, WeekOfYear],  # [该天所在的月，该周所在的年]  编码为[-0.5,0.5]之间的值
+        offsets.Day: [DayOfWeek, DayOfMonth, DayOfYear],  # [该天所在的周，该天所在的月，该天所在的年]
+        offsets.BusinessDay: [DayOfWeek, DayOfMonth, DayOfYear],  # 工作日所在的[周几，一个月的第几天，一年的第几天]
+        offsets.Hour: [HourOfDay, DayOfWeek, DayOfMonth, DayOfYear],  # 小时所在的[一天的第几个小时，一周的星期几，一月的第几天，一年的第几天]
+        offsets.Minute: [  # 统计分钟数据
+            MinuteOfHour,  # 一个小时的第几分钟
+            HourOfDay,  # 一天的第几个小时
+            DayOfWeek,  # 一周的第几天（星期几）
+            DayOfMonth,  # 一个月的第几天
+            DayOfYear,  # 一年的第几天
         ],
-        offsets.Second: [
+        offsets.Second: [  # 统计秒的数据
             SecondOfMinute,
             MinuteOfHour,
             HourOfDay,
@@ -107,10 +108,11 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
         ],
     }
 
-    offset = to_offset(freq_str)
+    offset = to_offset(freq_str)  # 设置采样频率大小，这里是小时：<Hour>
 
     for offset_type, feature_classes in features_by_offsets.items():
-        if isinstance(offset, offset_type):
+        if isinstance(offset, offset_type):  # 这里在Hour时判断成立：<class 'pandas._libs.tslibs.offsets.Hour'>
+            # [HourOfDay, DayOfWeek,DayOfMonth, DayOfYear]
             return [cls() for cls in feature_classes]
 
     supported_freq_msg = f"""
@@ -130,5 +132,12 @@ def time_features_from_frequency_str(freq_str: str) -> List[TimeFeature]:
     raise RuntimeError(supported_freq_msg)
 
 
+"""
+这个函数是把一个时间戳分解为了四个部分：[HourOfDay, DayOfWeek,DayOfMonth, DayOfYear]
+举例，如果是'2016-07-01 02:00:00'会分解为:[2,对应星期几，这个月的第几天，这一年的第几天]，并且把这些数据（整数）缩小到[-0.5,0.5]范围内
+dates： datetime的索引：['2016-07-01 02:00:00', '2016-07-01 03:00:00',...]
+freq： 数据采样的间隔
+"""
 def time_features(dates, freq='h'):
+    # 把数据在竖直方向堆叠，[4,18412]
     return np.vstack([feat(dates) for feat in time_features_from_frequency_str(freq)])
