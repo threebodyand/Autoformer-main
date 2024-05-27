@@ -6,6 +6,12 @@ Time series forecasting is a critical demand for real applications. Enlighted by
 
 In long-term forecasting, Autoformer achieves SOTA, with a **38% relative improvement** on six benchmarks, covering five practical applications: **energy, traffic, economics, weather and disease**.
 
+:triangular_flag_on_post:**News** (2023.08) Autoformer has been included in [Hugging Face](https://huggingface.co/models?search=autoformer). See [blog](https://huggingface.co/blog/autoformer).
+
+:triangular_flag_on_post:**News** (2023.06) The extension version of Autoformer ([Interpretable weather forecasting for worldwide stations with a unified deep model](https://www.nature.com/articles/s42256-023-00667-9)) has been published in Nature Machine Intelligence as the [Cover Article](https://www.nature.com/natmachintell/volumes/5/issues/6).
+
+:triangular_flag_on_post:**News** (2023.02) Autoformer has been included in our [[Time-Series-Library]](https://github.com/thuml/Time-Series-Library), which covers long- and short-term forecasting, imputation, anomaly detection, and classification.
+
 :triangular_flag_on_post:**News** (2022.02-2022.03) Autoformer has been deployed in [2022 Winter Olympics](https://en.wikipedia.org/wiki/2022_Winter_Olympics) to provide weather forecasting for competition venues, including wind speed and temperature.
 
 ## Autoformer vs. Transformers
@@ -33,7 +39,7 @@ Inspired by the stochastic process theory, we design the Auto-Correlation mechan
 ## Get Started
 
 1. Install Python 3.6, PyTorch 1.9.0.
-2. Download data. You can obtain all the six benchmarks from [Tsinghua Cloud](https://cloud.tsinghua.edu.cn/d/e1ccfff39ad541908bae/) or [Google Drive](https://drive.google.com/drive/folders/1ZOYpTUa82_jCcxIdTmyr0LXQfvaM9vIy?usp=sharing). **All the datasets are well pre-processed** and can be used easily.
+2. Download data. You can obtain all the six benchmarks from [Google Drive](https://drive.google.com/drive/folders/1ZOYpTUa82_jCcxIdTmyr0LXQfvaM9vIy?usp=sharing). **All the datasets are well pre-processed** and can be used easily.
 3. Train the model. We provide the experiment scripts of all benchmarks under the folder `./scripts`. You can reproduce the experiment results by:
 
 ```bash
@@ -98,7 +104,7 @@ If you find this repo useful, please cite our paper.
 
 ## Contact
 
-If you have any questions or want to use the code, please contact whx20@mails.tsinghua.edu.cn.
+If you have any questions or want to use the code, please contact wuhx23@mails.tsinghua.edu.cn.
 
 ## Acknowledgement
 
